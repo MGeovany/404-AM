@@ -11,6 +11,7 @@
     "watch": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "package": "npm run build && node scripts/package.mjs",
+    "package:edge": "npm run build && node scripts/package-edge.mjs",
     "package:firefox": "npm run build && node scripts/package-firefox.mjs",
     "package:source": "node scripts/package-source.mjs",
     "build:safari": "tsc --noEmit && vite build -c vite.safari.config.ts",
