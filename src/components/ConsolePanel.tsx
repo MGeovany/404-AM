@@ -3,9 +3,13 @@ import type { ConsoleEntry } from '../hooks/useConsoleLogs'
 
 interface Props {
   logs: ConsoleEntry[]
+  hiddenCount: number
+  hiddenRuleCount: number
   collapsed: boolean
   onToggle: () => void
   onClear: () => void
+  onHideMessage: (entry: ConsoleEntry) => void
+  onClearHidden: () => void
 }
 
 function formatTime(ms: number): string {
@@ -17,7 +21,16 @@ function formatTime(ms: number): string {
   }
 }
 
-export function ConsolePanel({ logs, collapsed, onToggle, onClear }: Props) {
+export function ConsolePanel({
+  logs,
+  hiddenCount,
+  hiddenRuleCount,
+  collapsed,
+  onToggle,
+  onClear,
+  onHideMessage,
+  onClearHidden,
+}: Props) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   // Stick to the bottom as new logs arrive (unless the user scrolled up).
@@ -35,7 +48,20 @@ export function ConsolePanel({ logs, collapsed, onToggle, onClear }: Props) {
         <span className="caret">{collapsed ? '▸' : '▾'}</span>
         <span className="console-title">Console</span>
         <span className="console-count">{logs.length}</span>
+        {hiddenCount > 0 && <span className="console-hidden">{hiddenCount} hidden</span>}
         <span className="spacer" />
+        {hiddenRuleCount > 0 && (
+          <button
+            className="ghost"
+            title="Show previously hidden console messages again"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClearHidden()
+            }}
+          >
+            Reset hidden
+          </button>
+        )}
         <button
           className="ghost"
           onClick={(e) => {
@@ -58,6 +84,13 @@ export function ConsolePanel({ logs, collapsed, onToggle, onClear }: Props) {
                 <span className="log-time">{formatTime(l.time)}</span>
                 <span className="log-level">{l.level}</span>
                 <span className="log-text">{l.text}</span>
+                <button
+                  className="log-hide"
+                  title="Hide this exact message in the future"
+                  onClick={() => onHideMessage(l)}
+                >
+                  Hide
+                </button>
               </div>
             ))
           )}

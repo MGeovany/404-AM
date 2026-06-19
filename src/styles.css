@@ -1219,6 +1219,10 @@ button:disabled {
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
 }
+.console-hidden {
+  font-size: 11px;
+  color: var(--fg-subtle);
+}
 .console-body {
   height: 180px;
   overflow: auto;
@@ -1230,6 +1234,7 @@ button:disabled {
 }
 .log-row {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
   padding: 3px 12px;
   border-bottom: 1px solid var(--border);
@@ -1251,6 +1256,24 @@ button:disabled {
 }
 .log-text {
   flex: 1;
+  color: var(--fg);
+}
+.log-hide {
+  flex-shrink: 0;
+  opacity: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  background: transparent;
+  color: var(--fg-subtle);
+  font: 11px/1.5 var(--font);
+}
+.log-row:hover .log-hide,
+.log-hide:focus-visible {
+  opacity: 1;
+}
+.log-hide:hover {
+  background: var(--surface);
   color: var(--fg);
 }
 .log-error {

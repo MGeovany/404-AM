@@ -94,6 +94,7 @@ function mount() {
   let dragStartY = 0
   let fabStartX = 0
   let fabStartY = 0
+  let snapTimer = 0
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -177,7 +178,10 @@ function mount() {
     host.style.top = `${top}px`
     host.style.width = `${width}px`
     host.style.height = `${height}px`
-    host.className = `edge-${edge}`
+    host.classList.toggle('edge-left', edge === 'left')
+    host.classList.toggle('edge-right', edge === 'right')
+    host.classList.toggle('edge-top', edge === 'top')
+    host.classList.toggle('edge-bottom', edge === 'bottom')
     button.style.left = `${buttonX}px`
     button.style.top = `${buttonY}px`
     panelEl.style.left = `${panelX}px`
@@ -188,6 +192,13 @@ function mount() {
     const modeY = edge === 'top' ? buttonY + FAB_SIZE + 8 : buttonY + 6
     modeButton.style.left = `${clamp(modeX, 0, width - MODE_SIZE)}px`
     modeButton.style.top = `${clamp(modeY, 0, height - MODE_SIZE)}px`
+  }
+
+  const animateSnap = () => {
+    window.clearTimeout(snapTimer)
+    host.classList.add('snapping')
+    positionHost()
+    snapTimer = window.setTimeout(() => host.classList.remove('snapping'), 200)
   }
 
   const syncOpen = () => {
@@ -209,10 +220,7 @@ function mount() {
     if (!dragging) return
     const dx = event.clientX - dragStartX
     const dy = event.clientY - dragStartY
-    if (Math.abs(dx) + Math.abs(dy) > 4) {
-      moved = true
-      if (open) open = false
-    }
+    if (Math.abs(dx) + Math.abs(dy) > 4) moved = true
     fabX = fabStartX + dx
     fabY = fabStartY + dy
     positionHost()
@@ -233,7 +241,7 @@ function mount() {
       toggleOpen()
     } else {
       snapToNearestEdge()
-      positionHost()
+      animateSnap()
     }
   }
 
@@ -242,6 +250,8 @@ function mount() {
     event.stopPropagation()
     dragging = true
     moved = false
+    window.clearTimeout(snapTimer)
+    host.classList.remove('snapping')
     dragStartX = event.clientX
     dragStartY = event.clientY
     fabStartX = fabX
@@ -251,7 +261,7 @@ function mount() {
     } catch (_err) {
       // Pointer capture is best-effort in Safari content scripts.
     }
-    document.addEventListener('pointermove', onDragMove)
+    if (!open) document.addEventListener('pointermove', onDragMove)
     document.addEventListener('pointerup', onDragEnd)
   })
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRequestSource, useConsoleSource } from '@source'
 import { usePersistentFilters } from './hooks/usePersistentFilters'
 import { useBodyIndex } from './hooks/useBodyIndex'
+import { useHiddenConsoleMessages } from './hooks/useHiddenConsoleMessages'
 import { RequestList } from './components/RequestList'
 import { RequestDetail } from './components/RequestDetail'
 import { ConsolePanel } from './components/ConsolePanel'
@@ -42,6 +43,12 @@ export function Panel() {
 
   const { requests, navigations, clear } = useRequestSource(filters.preserveLog)
   const { logs, clear: clearLogs } = useConsoleSource(filters.preserveLog)
+  const {
+    isHidden: isConsoleHidden,
+    hide: hideConsoleMessage,
+    clear: clearHiddenConsoleMessages,
+    hiddenRuleCount,
+  } = useHiddenConsoleMessages()
 
   // Load persisted sidebar width.
   useEffect(() => {
@@ -91,6 +98,8 @@ export function Panel() {
         return arr // 'recent' = capture order
     }
   }, [filtered, filters.sort])
+
+  const visibleLogs = useMemo(() => logs.filter((log) => !isConsoleHidden(log)), [logs, isConsoleHidden])
 
   // Navigation markers only make sense in chronological, ungrouped order.
   const showMarkers = filters.sort === 'recent' && !filters.groupByDomain
@@ -210,18 +219,22 @@ export function Panel() {
         </aside>
         <div className="resizer" onMouseDown={startResize} title="Drag to resize" />
         <main className="workspace">
-          <RequestDetail
-            req={selected}
-            initialBodyQuery={bodySearchActive ? filters.search : ''}
-            consoleLogs={logs}
-          />
+            <RequestDetail
+              req={selected}
+              initialBodyQuery={bodySearchActive ? filters.search : ''}
+              consoleLogs={visibleLogs}
+            />
         </main>
       </div>
       <ConsolePanel
-        logs={logs}
+        logs={visibleLogs}
+        hiddenCount={logs.length - visibleLogs.length}
+        hiddenRuleCount={hiddenRuleCount}
         collapsed={consoleCollapsed}
         onToggle={() => setConsoleCollapsed((c) => !c)}
         onClear={clearLogs}
+        onHideMessage={hideConsoleMessage}
+        onClearHidden={clearHiddenConsoleMessages}
       />
     </div>
   )
