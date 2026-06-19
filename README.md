@@ -2,6 +2,8 @@
 
 Chrome DevTools panel to inspect `fetch` and XHR requests: status, duration, headers, payload and response body. Sensitive values are masked by default. Copy as cURL or fetch.
 
+The same React UI also builds as a Safari Web Extension overlay. The UI imports a host-agnostic `@source` module; the regular build points it at the DevTools API source, while the Safari build points it at the injected content-script source.
+
 ## Develop
 
 ```bash
@@ -20,11 +22,27 @@ pnpm watch
 
 After changing code, run `pnpm build` or keep `pnpm watch` running, then close and reopen DevTools.
 
+## Load in Safari
+
+```bash
+npm run build:safari
+open safari-app/404-AM/404-AM.xcodeproj
+```
+
+The Safari Xcode project references `dist-safari/` directly, so rebuild with `npm run build:safari` after changing shared UI, source hooks, or the injected capture script.
+
+For a zip of the Safari web-extension resources:
+
+```bash
+npm run package:safari   # writes 404-am-safari-v<version>.zip
+```
+
 ## Architecture
 
-- `manifest.json` → `devtools_page: devtools.html`
-- `devtools.ts` → `chrome.devtools.panels.create("404-AM", …, "panel.html")`
-- `panel.html` → React app listening to `chrome.devtools.network.onRequestFinished`
+- Chrome/Firefox: `public/manifest.json` → `devtools_page: devtools.html` → `panel.html`.
+- Safari: `manifest.safari.json` → `content.js` overlay + `inject.js` main-world capture.
+- Shared UI: `src/Panel.tsx`, `src/components/`, `src/lib/`.
+- Data-source swap: `@source` resolves to `src/data/devtoolsSource.ts` in `vite.config.ts` and `src/data/injectedSource.ts` in `vite.safari.config.ts`.
 
 No background service worker is needed.
 

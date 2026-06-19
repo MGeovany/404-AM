@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNetworkRequests } from './hooks/useNetworkRequests'
+import { useRequestSource, useConsoleSource } from '@source'
 import { usePersistentFilters } from './hooks/usePersistentFilters'
 import { useBodyIndex } from './hooks/useBodyIndex'
-import { useConsoleLogs } from './hooks/useConsoleLogs'
 import { RequestList } from './components/RequestList'
 import { RequestDetail } from './components/RequestDetail'
 import { ConsolePanel } from './components/ConsolePanel'
@@ -41,12 +40,12 @@ export function Panel() {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [consoleCollapsed, setConsoleCollapsed] = useState(false)
 
-  const { requests, navigations, clear } = useNetworkRequests(filters.preserveLog)
-  const { logs, clear: clearLogs } = useConsoleLogs(filters.preserveLog)
+  const { requests, navigations, clear } = useRequestSource(filters.preserveLog)
+  const { logs, clear: clearLogs } = useConsoleSource(filters.preserveLog)
 
   // Load persisted sidebar width.
   useEffect(() => {
-    chrome.storage?.local.get(LAYOUT_KEY, (res) => {
+    chrome.storage?.local?.get(LAYOUT_KEY, (res) => {
       const w = res?.[LAYOUT_KEY]?.sidebarWidth
       if (typeof w === 'number') setSidebarWidth(Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, w)))
     })
@@ -154,7 +153,7 @@ export function Panel() {
       document.body.style.cursor = ''
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
-      chrome.storage?.local.set({ [LAYOUT_KEY]: { sidebarWidth: w } })
+      chrome.storage?.local?.set({ [LAYOUT_KEY]: { sidebarWidth: w } })
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)

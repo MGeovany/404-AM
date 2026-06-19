@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "package": "npm run build && node scripts/package.mjs",
     "package:firefox": "npm run build && node scripts/package-firefox.mjs",
-    "package:source": "node scripts/package-source.mjs"
+    "package:source": "node scripts/package-source.mjs",
+    "build:safari": "tsc --noEmit && vite build -c vite.safari.config.ts",
+    "package:safari": "npm run build:safari && node scripts/package-safari.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
