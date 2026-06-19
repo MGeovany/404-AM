@@ -10,6 +10,8 @@ interface Props {
   onSelect: (id: number) => void
   groupByDomain: boolean
   slowThresholdMs: number
+  favorites: Set<number>
+  onToggleFavorite: (id: number) => void
 }
 
 function hostOf(url: string): string {
@@ -50,6 +52,8 @@ export function RequestList({
   onSelect,
   groupByDomain,
   slowThresholdMs,
+  favorites,
+  onToggleFavorite,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -65,6 +69,18 @@ export function RequestList({
     )
   }
 
+  // Shared waterfall bounds across all visible requests.
+  let timelineStart = Infinity
+  let timelineEnd = -Infinity
+  for (const r of requests) {
+    const s = Date.parse(r.startedDateTime)
+    if (Number.isNaN(s)) continue
+    timelineStart = Math.min(timelineStart, s)
+    timelineEnd = Math.max(timelineEnd, s + Math.max(r.durationMs, 0))
+  }
+  if (!Number.isFinite(timelineStart)) timelineStart = 0
+  const timelineSpan = Math.max(timelineEnd - timelineStart, 1)
+
   const row = (r: CapturedRequest) => (
     <RequestRow
       key={r.id}
@@ -72,6 +88,10 @@ export function RequestList({
       selected={r.id === selectedId}
       onSelect={onSelect}
       slowThresholdMs={slowThresholdMs}
+      timelineStart={timelineStart}
+      timelineSpan={timelineSpan}
+      starred={favorites.has(r.id)}
+      onToggleFavorite={onToggleFavorite}
     />
   )
 

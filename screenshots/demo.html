@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404-AM demo target</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f0f14;
+        --card: #1b1b22;
+        --fg: #e8e8ed;
+        --muted: #9898a8;
+        --accent: #6a66ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--fg);
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+      }
+      .card {
+        width: 100%;
+        max-width: 560px;
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 28px;
+      }
+      h1 { margin: 0 0 4px; font-size: 20px; }
+      p.sub { margin: 0 0 20px; color: var(--muted); }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: var(--fg);
+      }
+      .log {
+        background: #0a0a0e;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 12px;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: pre-wrap;
+        min-height: 64px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>404-AM demo target</h1>
+      <p class="sub">
+        Open DevTools → <strong>404-AM</strong> tab, then run the traffic to
+        populate the panel for screenshots.
+      </p>
+      <div class="row">
+        <button id="run">Run all traffic</button>
+        <button id="ok" class="secondary">200 JSON</button>
+        <button id="post" class="secondary">POST + headers</button>
+        <button id="e404" class="secondary">404</button>
+        <button id="e500" class="secondary">500</button>
+        <button id="slow" class="secondary">Slow 2.5s</button>
+        <button id="logs" class="secondary">Console logs</button>
+      </div>
+      <div class="log" id="status">Idle.</div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status')
+      const note = (m) => (statusEl.textContent = m)
+
+      // A small per-page request id, attached so the Traces tab is populated.
+      function rid() {
+        return 'req-' + Math.random().toString(36).slice(2, 10)
+      }
+
+      async function call(label, url, init) {
+        const headers = Object.assign({ 'x-request-id': rid() }, (init && init.headers) || {})
+        try {
+          const res = await fetch(url, Object.assign({}, init, { headers }))
+          console.info('[demo] ' + label + ' →', res.status)
+          // Drain the body so 404-AM can show it.
+          await res.text()
+          return res.status
+        } catch (e) {
+          console.error('[demo] ' + label + ' failed', e)
+          return 'error'
+        }
+      }
+
+      const JP = 'https://jsonplaceholder.typicode.com'
+      const STAT = 'https://httpstat.us'
+      const jsonAccept = { Accept: 'application/json' }
+
+      const actions = {
+        ok: () => call('GET todo', JP + '/todos/1'),
+        list: () => call('GET users', JP + '/users'),
+        post: () =>
+          call('POST post', JP + '/posts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer demo-token-abc123',
+            },
+            body: JSON.stringify({ title: 'Hello', body: 'from 404-AM demo', userId: 7 }),
+          }),
+        e404: () => call('GET missing', JP + '/nope/404', { headers: jsonAccept }),
+        e500: () => call('GET 500', STAT + '/500', { headers: jsonAccept }),
+        slow: () => call('GET slow', STAT + '/200?sleep=2500', { headers: jsonAccept }),
+        logs: () => {
+          console.log('[demo] plain log message')
+          console.info('[demo] info: user session started')
+          console.warn('[demo] warning: retrying request')
+          console.error('[demo] error: something went wrong')
+          setTimeout(() => {
+            throw new Error('[demo] uncaught error for the Console panel')
+          }, 0)
+          note('Emitted console logs (see the 404-AM Console panel).')
+        },
+      }
+
+      document.getElementById('ok').onclick = actions.ok
+      document.getElementById('post').onclick = actions.post
+      document.getElementById('e404').onclick = actions.e404
+      document.getElementById('e500').onclick = actions.e500
+      document.getElementById('slow').onclick = actions.slow
+      document.getElementById('logs').onclick = actions.logs
+
+      document.getElementById('run').onclick = async () => {
+        note('Running…')
+        actions.logs()
+        await Promise.all([actions.ok(), actions.list(), actions.post(), actions.e404(), actions.e500()])
+        await actions.slow()
+        note('Done — switch to the 404-AM panel.')
+      }
+    </script>
+  </body>
+</html>

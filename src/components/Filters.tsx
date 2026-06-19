@@ -1,5 +1,7 @@
 import { CATEGORY_LABEL, CONTENT_CATEGORIES } from '../lib/contentType'
 
+export type SortMode = 'recent' | 'duration' | 'size' | 'status'
+
 export interface FilterState {
   search: string
   onlyErrors: boolean
@@ -8,6 +10,16 @@ export interface FilterState {
   groupByDomain: boolean
   contentType: string
   preserveLog: boolean
+  sort: SortMode
+  searchBodies: boolean
+  starredOnly: boolean
+}
+
+const SORT_LABEL: Record<SortMode, string> = {
+  recent: 'Recent',
+  duration: 'Slowest',
+  size: 'Largest',
+  status: 'Status',
 }
 
 interface Props {
@@ -48,7 +60,7 @@ export function Filters({
     <div className="sidebar-head">
       <div className="sidebar-title-row">
         <div className="brand">
-          <span className="brand-mark" />
+          <img className="brand-icon" src="icons/icon32.png" alt="" width={18} height={18} />
           <span className="brand-name">404-AM</span>
         </div>
         <div className="sidebar-actions">
@@ -78,12 +90,28 @@ export function Filters({
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
         />
+        {filters.search && (
+          <button
+            type="button"
+            className="search-clear"
+            title="Clear search"
+            aria-label="Clear search"
+            onClick={() => onChange({ ...filters, search: '' })}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       <div className="filters-row">
         <label className={`chip ${filters.onlyErrors ? 'active' : ''}`}>
           <input type="checkbox" checked={filters.onlyErrors} onChange={() => toggle('onlyErrors')} />
           Errors
+        </label>
+
+        <label className={`chip ${filters.starredOnly ? 'active' : ''}`}>
+          <input type="checkbox" checked={filters.starredOnly} onChange={() => toggle('starredOnly')} />
+          ★ Starred
         </label>
 
         <label className={`threshold-wrap ${filters.onlySlow ? 'active' : ''}`}>
@@ -124,6 +152,27 @@ export function Filters({
           <input type="checkbox" checked={filters.preserveLog} onChange={() => toggle('preserveLog')} />
           History
         </label>
+
+        <label
+          className={`chip ${filters.searchBodies ? 'active' : ''}`}
+          title="Also match the search text inside response bodies"
+        >
+          <input type="checkbox" checked={filters.searchBodies} onChange={() => toggle('searchBodies')} />
+          Bodies
+        </label>
+
+        <select
+          className="ctype-filter"
+          title="Sort requests"
+          value={filters.sort}
+          onChange={(e) => onChange({ ...filters, sort: e.target.value as SortMode })}
+        >
+          {(Object.keys(SORT_LABEL) as SortMode[]).map((s) => (
+            <option key={s} value={s}>
+              {SORT_LABEL[s]}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   )

@@ -27,3 +27,19 @@ After changing code, run `pnpm build` or keep `pnpm watch` running, then close a
 - `panel.html` → React app listening to `chrome.devtools.network.onRequestFinished`
 
 No background service worker is needed.
+
+## Publish to the Chrome Web Store
+
+```bash
+npm run package   # builds dist/ and writes 404-am-v<version>.zip
+```
+
+1. Bump `version` in **both** `package.json` and `public/manifest.json`.
+2. Run `npm run package` to produce `404-am-v<version>.zip` (manifest at the zip root).
+3. Open the [Developer Console](https://chrome.google.com/webstore/devconsole) and upload the zip.
+4. Fill in the listing using [`STORE_LISTING.md`](./STORE_LISTING.md) (name, descriptions, permission justifications, privacy answers).
+5. Host [`PRIVACY.md`](./PRIVACY.md) publicly and paste its URL into the privacy policy field.
+6. Add 1–5 screenshots (1280×800 or 640×400) — see the asset checklist in `STORE_LISTING.md`.
+7. Submit for review.
+
+Publishing files in this repo: [`STORE_LISTING.md`](./STORE_LISTING.md), [`PRIVACY.md`](./PRIVACY.md), [`LICENSE`](./LICENSE), [`scripts/package.mjs`](./scripts/package.mjs).

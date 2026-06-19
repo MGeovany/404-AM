@@ -1,11 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { CapturedRequest, HarHeader } from '../types'
 import { getTraceIds, isImportant, isSensitive, maskValue } from '../lib/headers'
 import { tryFormatJson } from '../lib/json'
 import { toCurl, toFetch } from '../lib/curl'
+import { toAiBrief } from '../lib/aiBrief'
 import { formatBytes } from '../lib/contentType'
 import { countMatches, highlightJson } from '../lib/highlight'
 import { methodClass, statusClass } from './RequestRow'
+import { JsonTree } from './JsonTree'
+import type { ConsoleEntry } from '../hooks/useConsoleLogs'
 
 type Tab = 'preview' | 'headers' | 'body' | 'traces'
 
@@ -134,18 +137,33 @@ function shortPath(url: string): string {
   }
 }
 
-export function RequestDetail({ req }: { req: CapturedRequest | null }) {
+export function RequestDetail({
+  req,
+  initialBodyQuery = '',
+  consoleLogs = [],
+}: {
+  req: CapturedRequest | null
+  initialBodyQuery?: string
+  consoleLogs?: ConsoleEntry[]
+}) {
   const [reveal, setReveal] = useState(false)
   const [body, setBody] = useState<{ content: string; encoding: string } | null>(null)
   const [loadingBody, setLoadingBody] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [bodyQuery, setBodyQuery] = useState('')
   const [tab, setTab] = useState<Tab>('preview')
+  const [bodyView, setBodyView] = useState<'tree' | 'raw'>('tree')
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  // Read the latest seed without re-running the load effect on every keystroke.
+  const seedRef = useRef(initialBodyQuery)
+  seedRef.current = initialBodyQuery
 
   useEffect(() => {
     setBody(null)
-    setBodyQuery('')
-    setTab('preview')
+    const seed = seedRef.current
+    setBodyQuery(seed)
+    setTab(seed ? 'body' : 'preview')
     if (!req) return
     let cancelled = false
     setLoadingBody(true)
@@ -158,6 +176,12 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
       cancelled = true
     }
   }, [req])
+
+  // Jump to the first match whenever the body or query changes on the Body tab.
+  useEffect(() => {
+    if (tab !== 'body' || !bodyQuery) return
+    bodyRef.current?.querySelector('mark')?.scrollIntoView({ block: 'center' })
+  }, [tab, bodyQuery, body])
 
   if (!req) {
     return (
@@ -185,6 +209,17 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
     : ''
   const matchCount = bodyQuery ? countMatches(formattedResponse, bodyQuery) : 0
 
+  let respParsed: any
+  if (!isBinary && responseText) {
+    try {
+      respParsed = JSON.parse(responseText)
+    } catch {
+      respParsed = undefined
+    }
+  }
+  const respIsObject = respParsed !== null && typeof respParsed === 'object'
+  const showTree = respIsObject && bodyView === 'tree' && !bodyQuery
+
   const tabs: { id: Tab; label: string; hidden?: boolean }[] = [
     { id: 'preview', label: 'Preview' },
     { id: 'headers', label: 'Headers' },
@@ -194,49 +229,69 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
 
   return (
     <div className="detail">
-      <div className="url-bar">
-        <span className={`method-pill ${methodClass(req.method)}`}>{req.method}</span>
-        <span className="url-bar-path" title={req.url}>
-          {shortPath(req.url)}
-        </span>
-        <div className="url-bar-meta">
-          <span className={`status-pill ${statusClass(req.status)}`}>
-            {req.status || '···'}
+      <div className="detail-header">
+        <div className="url-bar">
+          <span className={`method-pill ${methodClass(req.method)}`}>{req.method}</span>
+          <span className="url-bar-path" title={req.url}>
+            {shortPath(req.url)}
           </span>
-          <span className="meta-chip">
-            {req.durationMs >= 0 ? `${req.durationMs} ms` : '···'}
-          </span>
-          <span className="meta-chip">{formatBytes(req.responseBodySize)}</span>
+          <div className="url-bar-meta">
+            <span className={`status-pill ${statusClass(req.status)}`}>
+              {req.status || '···'}
+            </span>
+            <span className="meta-chip">
+              {req.durationMs >= 0 ? `${req.durationMs} ms` : '···'}
+            </span>
+            <span className="meta-chip">{formatBytes(req.responseBodySize)}</span>
+          </div>
         </div>
-      </div>
 
-      <div className="tab-bar">
-        {tabs
-          .filter((t) => !t.hidden)
-          .map((t) => (
+        <div className="tab-bar">
+          <div className="tab-bar-tabs">
+            {tabs
+              .filter((t) => !t.hidden)
+              .map((t) => (
+                <button
+                  key={t.id}
+                  className={`tab ${tab === t.id ? 'active' : ''}`}
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+          </div>
+          <div className="tab-bar-actions">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={reveal}
+                onChange={(e) => setReveal(e.target.checked)}
+              />
+              Sensitive
+            </label>
             <button
-              key={t.id}
-              className={`tab ${tab === t.id ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              className="primary"
+              title="Copy an AI-ready debug brief (secrets masked) to paste into Claude"
+              onClick={() =>
+                flash('ai', toAiBrief(req, { responseBody: responseText, isBinary, consoleLogs }))
+              }
             >
-              {t.label}
+              {copied === 'ai' ? 'Copied' : 'Copy for AI'}
             </button>
-          ))}
-        <span className="spacer" />
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={reveal}
-            onChange={(e) => setReveal(e.target.checked)}
-          />
-          Sensitive
-        </label>
-        <button onClick={() => flash('curl', toCurl(req, { reveal }))}>
-          {copied === 'curl' ? 'Copied' : 'cURL'}
-        </button>
-        <button onClick={() => flash('fetch', toFetch(req, { reveal }))}>
-          {copied === 'fetch' ? 'Copied' : 'fetch'}
-        </button>
+            <button onClick={() => flash('curl', toCurl(req, { reveal }))}>
+              {copied === 'curl' ? 'Copied' : 'cURL'}
+            </button>
+            <button onClick={() => flash('fetch', toFetch(req, { reveal }))}>
+              {copied === 'fetch' ? 'Copied' : 'fetch'}
+            </button>
+            <button
+              disabled={!responseText}
+              onClick={() => flash('response', responseText)}
+            >
+              {copied === 'response' ? 'Copied' : 'Copy response'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="detail-body">
@@ -263,11 +318,11 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
 
         {tab === 'headers' && (
           <>
-            <section style={{ marginBottom: 20 }}>
+            <section className="detail-section">
               <h3>Request</h3>
               <HeaderTable headers={req.requestHeaders} reveal={reveal} />
             </section>
-            <section>
+            <section className="detail-section">
               <h3>Response</h3>
               <HeaderTable headers={req.responseHeaders} reveal={reveal} />
             </section>
@@ -277,7 +332,7 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
         {tab === 'body' && (
           <>
             {req.requestBody && (
-              <section style={{ marginBottom: 20 }}>
+              <section className="detail-section">
                 <h3>Request</h3>
                 <BodyBlock text={req.requestBody.text ?? ''} mimeType={req.requestBody.mimeType} />
               </section>
@@ -285,31 +340,53 @@ export function RequestDetail({ req }: { req: CapturedRequest | null }) {
             <section>
               <div className="section-head">
                 <h3>Response</h3>
-                {responseText && (
-                  <div className="body-search">
-                    <input
-                      type="text"
-                      placeholder="Find in body"
-                      value={bodyQuery}
-                      onChange={(e) => setBodyQuery(e.target.value)}
-                    />
-                    {bodyQuery && (
-                      <span className="match-count">
-                        {matchCount} {matchCount === 1 ? 'match' : 'matches'}
-                      </span>
-                    )}
+                <div className="section-tools">
+                  {respIsObject && !bodyQuery && (
+                    <div className="view-toggle">
+                      <button
+                        className={bodyView === 'tree' ? 'active' : ''}
+                        onClick={() => setBodyView('tree')}
+                      >
+                        Tree
+                      </button>
+                      <button
+                        className={bodyView === 'raw' ? 'active' : ''}
+                        onClick={() => setBodyView('raw')}
+                      >
+                        Raw
+                      </button>
+                    </div>
+                  )}
+                  {responseText && (
+                    <div className="body-search">
+                      <input
+                        type="text"
+                        placeholder="Find in body"
+                        value={bodyQuery}
+                        onChange={(e) => setBodyQuery(e.target.value)}
+                      />
+                      {bodyQuery && (
+                        <span className="match-count">
+                          {matchCount} {matchCount === 1 ? 'match' : 'matches'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div ref={bodyRef}>
+                {loadingBody ? (
+                  <div className="muted">Loading</div>
+                ) : isBinary ? (
+                  <div className="muted">
+                    Binary {req.responseBodySize} bytes {req.responseMimeType}
                   </div>
+                ) : showTree ? (
+                  <JsonTree data={respParsed} />
+                ) : (
+                  <BodyBlock text={responseText} mimeType={req.responseMimeType} query={bodyQuery} />
                 )}
               </div>
-              {loadingBody ? (
-                <div className="muted">Loading</div>
-              ) : isBinary ? (
-                <div className="muted">
-                  Binary {req.responseBodySize} bytes {req.responseMimeType}
-                </div>
-              ) : (
-                <BodyBlock text={responseText} mimeType={req.responseMimeType} query={bodyQuery} />
-              )}
             </section>
           </>
         )}

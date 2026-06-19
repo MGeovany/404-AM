@@ -1,12 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNetworkRequests } from './hooks/useNetworkRequests'
+import { usePersistentFilters } from './hooks/usePersistentFilters'
+import { useBodyIndex } from './hooks/useBodyIndex'
+import { useConsoleLogs } from './hooks/useConsoleLogs'
 import { RequestList } from './components/RequestList'
 import { RequestDetail } from './components/RequestDetail'
+import { ConsolePanel } from './components/ConsolePanel'
 import { Filters, type FilterState } from './components/Filters'
 import { downloadFile, toHar, toJson } from './lib/export'
 import { categoryOf } from './lib/contentType'
 
 const API_TYPES = ['xhr', 'fetch']
+const LAYOUT_KEY = 'fourohfour_layout_v1'
+const DEFAULT_SIDEBAR_WIDTH = 340
+const MIN_SIDEBAR = 240
+const MAX_SIDEBAR = 720
+
+const DEFAULT_FILTERS: FilterState = {
+  search: '',
+  onlyErrors: false,
+  onlySlow: false,
+  slowThresholdMs: 1000,
+  groupByDomain: false,
+  contentType: 'all',
+  preserveLog: true,
+  sort: 'recent',
+  searchBodies: false,
+  starredOnly: false,
+}
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, '-')
@@ -15,36 +36,129 @@ function timestamp(): string {
 export function Panel() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    onlyErrors: false,
-    onlySlow: false,
-    slowThresholdMs: 1000,
-    groupByDomain: false,
-    contentType: 'all',
-    preserveLog: true,
-  })
+  const [filters, setFilters] = usePersistentFilters(DEFAULT_FILTERS)
+  const [favorites, setFavorites] = useState<Set<number>>(new Set())
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const [consoleCollapsed, setConsoleCollapsed] = useState(false)
 
   const { requests, navigations, clear } = useNetworkRequests(filters.preserveLog)
+  const { logs, clear: clearLogs } = useConsoleLogs(filters.preserveLog)
+
+  // Load persisted sidebar width.
+  useEffect(() => {
+    chrome.storage?.local.get(LAYOUT_KEY, (res) => {
+      const w = res?.[LAYOUT_KEY]?.sidebarWidth
+      if (typeof w === 'number') setSidebarWidth(Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, w)))
+    })
+  }, [])
 
   const apiRequests = useMemo(
     () => requests.filter((r) => API_TYPES.includes(r.resourceType)),
     [requests],
   )
 
+  // Fetch bodies lazily only while body-search is active and there's a query.
+  const bodySearchActive = filters.searchBodies && filters.search.trim().length > 0
+  const { bodies, version: bodyVersion } = useBodyIndex(apiRequests, bodySearchActive)
+
   const filtered = useMemo(() => {
     const search = filters.search.toLowerCase()
     return apiRequests.filter((r) => {
       if (filters.onlyErrors && r.status < 400) return false
       if (filters.onlySlow && r.durationMs < filters.slowThresholdMs) return false
+      if (filters.starredOnly && !favorites.has(r.id)) return false
       if (filters.contentType !== 'all' && categoryOf(r.responseMimeType) !== filters.contentType)
         return false
-      if (search && !r.url.toLowerCase().includes(search)) return false
+      if (search) {
+        const urlMatch = r.url.toLowerCase().includes(search)
+        const bodyMatch = filters.searchBodies && (bodies.get(r.id)?.includes(search) ?? false)
+        if (!urlMatch && !bodyMatch) return false
+      }
       return true
     })
-  }, [apiRequests, filters])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiRequests, filters, bodyVersion, favorites])
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered]
+    switch (filters.sort) {
+      case 'duration':
+        return arr.sort((a, b) => b.durationMs - a.durationMs)
+      case 'size':
+        return arr.sort((a, b) => b.responseBodySize - a.responseBodySize)
+      case 'status':
+        return arr.sort((a, b) => b.status - a.status)
+      default:
+        return arr // 'recent' = capture order
+    }
+  }, [filtered, filters.sort])
+
+  // Navigation markers only make sense in chronological, ungrouped order.
+  const showMarkers = filters.sort === 'recent' && !filters.groupByDomain
 
   const selected = apiRequests.find((r) => r.id === selectedId) ?? null
+
+  const toggleFavorite = (id: number) => {
+    setFavorites((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // Keyboard shortcuts: "/" focuses search, ↑/↓ move the selection.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const tag = el?.tagName
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+
+      if (e.key === '/' && !typing) {
+        e.preventDefault()
+        document.querySelector<HTMLInputElement>('.search')?.focus()
+        return
+      }
+      if (e.key === 'Escape' && el?.classList.contains('search')) {
+        ;(el as HTMLInputElement).blur()
+        return
+      }
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing) {
+        if (sorted.length === 0) return
+        e.preventDefault()
+        const idx = sorted.findIndex((r) => r.id === selectedId)
+        let next: number
+        if (idx === -1) next = e.key === 'ArrowDown' ? 0 : sorted.length - 1
+        else if (e.key === 'ArrowDown') next = Math.min(idx + 1, sorted.length - 1)
+        else next = Math.max(idx - 1, 0)
+        setSelectedId(sorted[next].id)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sorted, selectedId])
+
+  const resizingRef = useRef(false)
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault()
+    resizingRef.current = true
+    document.body.style.cursor = 'col-resize'
+    const startX = e.clientX
+    const startW = sidebarWidth
+    let w = startW
+    const onMove = (ev: MouseEvent) => {
+      w = Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, startW + (ev.clientX - startX)))
+      setSidebarWidth(w)
+    }
+    const onUp = () => {
+      resizingRef.current = false
+      document.body.style.cursor = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      chrome.storage?.local.set({ [LAYOUT_KEY]: { sidebarWidth: w } })
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   const handleClear = () => {
     clear()
@@ -68,7 +182,10 @@ export function Panel() {
   return (
     <div className="panel">
       <div className="split">
-        <aside className="sidebar">
+        <aside
+          className="sidebar"
+          style={{ flex: `0 0 ${sidebarWidth}px`, width: sidebarWidth, maxWidth: 'none' }}
+        >
           <Filters
             filters={filters}
             onChange={setFilters}
@@ -81,19 +198,32 @@ export function Panel() {
           />
           <div className="sidebar-list">
             <RequestList
-              requests={filtered}
-              navigations={navigations}
+              requests={sorted}
+              navigations={showMarkers ? navigations : []}
               selectedId={selectedId}
               onSelect={setSelectedId}
               groupByDomain={filters.groupByDomain}
               slowThresholdMs={filters.slowThresholdMs}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
             />
           </div>
         </aside>
+        <div className="resizer" onMouseDown={startResize} title="Drag to resize" />
         <main className="workspace">
-          <RequestDetail req={selected} />
+          <RequestDetail
+            req={selected}
+            initialBodyQuery={bodySearchActive ? filters.search : ''}
+            consoleLogs={logs}
+          />
         </main>
       </div>
+      <ConsolePanel
+        logs={logs}
+        collapsed={consoleCollapsed}
+        onToggle={() => setConsoleCollapsed((c) => !c)}
+        onClear={clearLogs}
+      />
     </div>
   )
 }
