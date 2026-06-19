@@ -2,43 +2,70 @@
 
 _Last updated: 2026-06-19_
 
-404-AM is a Chrome DevTools extension that helps developers inspect and debug
-the network requests and console output of the web page they are actively
-inspecting.
+**Canonical URL:** https://404am.thefndrs.com/privacy/
+
+404-AM is a browser extension that helps developers inspect and debug network
+requests and console output on web pages they are working on. This policy applies
+to Chrome/Firefox/Edge DevTools builds and the Safari Web Extension.
 
 ## Data we collect
 
 **None.** 404-AM does not collect, transmit, sell, or share any data. There are
-no analytics, no tracking, and no remote servers. Everything runs locally in
-your browser.
+no analytics, no accounts, no tracking, and no remote servers. Everything runs
+locally on your device.
 
 ## What the extension accesses, and why
 
-- **Network requests of the inspected page** — read via the Chrome DevTools API
-  (`chrome.devtools.network`) only while you have DevTools open on a tab. Used to
-  display methods, URLs, status codes, headers, payloads, and response bodies in
-  the panel. This data never leaves your machine.
-- **Console output of the inspected page** — read by evaluating a small logging
-  hook in the page via `chrome.devtools.inspectedWindow.eval`, shown in the
-  Console panel. Not stored or transmitted.
-- **Local preferences** (`chrome.storage.local`) — used solely to remember your
-  UI settings (active filters, sort order, sidebar width) on your own device.
+### Network requests
+
+404-AM reads fetch and XHR traffic from the page you are debugging so it can
+show method, URL, status, timing, headers, payloads, and response bodies in the
+panel. This data is displayed on your device only and is never sent to us or any
+third party.
+
+- **Chrome / Firefox / Edge** — captured via the DevTools network API while
+  DevTools is open on that tab.
+- **Safari** — captured by a small script injected into the active page while
+  the extension is enabled, relayed to the overlay panel via local messaging.
+
+### Console output
+
+Console logs from the page are shown in the integrated Console panel. They are
+not stored on servers or transmitted off-device.
+
+### Local preferences
+
+UI settings (filters, sort order, sidebar width, and similar options) are saved
+locally using browser extension storage on your own device.
 
 ## Actions you initiate
 
-- **Export (HAR/JSON)** and **Copy** actions place data into a file or your
-  clipboard on your device. What you do with that output is your choice.
-- **Copy for AI** masks sensitive header values (e.g. `Authorization`,
-  `Cookie`) by default before copying, so secrets are not included.
+- **Export (HAR/JSON)** and **Copy** actions write to a file or your clipboard
+  on your device. What you do with that output is your choice.
+- **Copy for AI** masks sensitive header values (e.g. `Authorization`, `Cookie`)
+  by default before copying.
 
 ## Permissions
 
-- `storage` — store UI preferences locally.
-- `devtools_page` — the entire feature set is a DevTools panel.
+- `storage` — remember UI preferences locally.
+- `devtools_page` — Chrome/Firefox/Edge builds deliver the panel inside
+  DevTools.
+- `http://*/*` and `https://*/*` (Safari only) — required so the extension can
+  run on web pages you choose to debug and show the overlay panel.
 
-404-AM requests **no host permissions**, injects **no content scripts**, and
-runs **no remote code**.
+404-AM runs **no remote code** and sends no captured data to external services.
+
+## Children
+
+404-AM is a developer tool and is not directed at children under 13.
+
+## Changes
+
+We may update this policy from time to time. The “Last updated” date at the top
+will reflect the latest revision.
 
 ## Contact
 
-For questions about this policy, open an issue in the project repository.
+For questions about this policy, open an issue in the
+[project repository](https://github.com/MGeovany/404-AM/issues) or visit
+https://404am.thefndrs.com/support/
