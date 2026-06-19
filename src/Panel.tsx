@@ -6,7 +6,6 @@ import { Filters, type FilterState } from './components/Filters'
 import { downloadFile, toHar, toJson } from './lib/export'
 import { categoryOf } from './lib/contentType'
 
-// Only fetch/XHR traffic is interesting for an API debugger.
 const API_TYPES = ['xhr', 'fetch']
 
 function timestamp(): string {
@@ -53,14 +52,14 @@ export function Panel() {
   }
 
   const handleExportJson = () => {
-    downloadFile(`network-summary-${timestamp()}.json`, toJson(filtered), 'application/json')
+    downloadFile(`404-am-${timestamp()}.json`, toJson(filtered), 'application/json')
   }
 
   const handleExportHar = async () => {
     setExporting(true)
     try {
       const har = await toHar(filtered)
-      downloadFile(`network-summary-${timestamp()}.har`, har, 'application/json')
+      downloadFile(`404-am-${timestamp()}.har`, har, 'application/json')
     } finally {
       setExporting(false)
     }
@@ -68,29 +67,32 @@ export function Panel() {
 
   return (
     <div className="panel">
-      <Filters
-        filters={filters}
-        onChange={setFilters}
-        total={apiRequests.length}
-        shown={filtered.length}
-        onClear={handleClear}
-        onExportHar={handleExportHar}
-        onExportJson={handleExportJson}
-        exporting={exporting}
-      />
       <div className="split">
-        <div className="left">
-          <RequestList
-            requests={filtered}
-            navigations={navigations}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            groupByDomain={filters.groupByDomain}
+        <aside className="sidebar">
+          <Filters
+            filters={filters}
+            onChange={setFilters}
+            total={apiRequests.length}
+            shown={filtered.length}
+            onClear={handleClear}
+            onExportHar={handleExportHar}
+            onExportJson={handleExportJson}
+            exporting={exporting}
           />
-        </div>
-        <div className="right">
+          <div className="sidebar-list">
+            <RequestList
+              requests={filtered}
+              navigations={navigations}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              groupByDomain={filters.groupByDomain}
+              slowThresholdMs={filters.slowThresholdMs}
+            />
+          </div>
+        </aside>
+        <main className="workspace">
           <RequestDetail req={selected} />
-        </div>
+        </main>
       </div>
     </div>
   )

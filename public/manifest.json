@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Network Summary",
+  "name": "404-AM",
   "version": "0.1.0",
-  "description": "A DevTools panel to quickly understand what happened with each network request in a web app.",
+  "description": "DevTools panel to inspect fetch and XHR requests on any page.",
   "minimum_chrome_version": "100",
   "devtools_page": "devtools.html",
   "icons": {

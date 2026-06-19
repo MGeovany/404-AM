@@ -23,7 +23,7 @@ interface Props {
 
 function SearchIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="11" cy="11" r="7" />
       <path d="M20 20l-3-3" />
     </svg>
@@ -45,55 +45,49 @@ export function Filters({
   }
 
   return (
-    <header className="header">
-      <div className="header-top">
+    <div className="sidebar-head">
+      <div className="sidebar-title-row">
         <div className="brand">
           <span className="brand-mark" />
-          <span className="brand-name">Network Summary</span>
+          <span className="brand-name">404-AM</span>
         </div>
-
-        <div className="search-wrap">
-          <SearchIcon />
-          <input
-            className="search"
-            placeholder="Search URL"
-            value={filters.search}
-            onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          />
-        </div>
-
-        <div className="header-actions">
-          <span className="count">
-            {shown} of {total}
-          </span>
-          <button onClick={onExportHar} disabled={exporting || shown === 0}>
-            {exporting ? 'Exporting' : 'HAR'}
+        <div className="sidebar-actions">
+          <span className="count">{shown}/{total}</span>
+          <button
+            className="ghost icon-btn"
+            title="Export HAR"
+            onClick={onExportHar}
+            disabled={exporting || shown === 0}
+          >
+            {exporting ? '…' : 'HAR'}
           </button>
-          <button onClick={onExportJson} disabled={shown === 0}>
+          <button className="ghost icon-btn" title="Export JSON" onClick={onExportJson} disabled={shown === 0}>
             JSON
           </button>
-          <button className="ghost" onClick={onClear}>
-            Clear
+          <button className="ghost icon-btn" title="Clear" onClick={onClear}>
+            ✕
           </button>
         </div>
       </div>
 
+      <div className="search-wrap">
+        <SearchIcon />
+        <input
+          className="search"
+          placeholder="Filter requests"
+          value={filters.search}
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+        />
+      </div>
+
       <div className="filters-row">
         <label className={`chip ${filters.onlyErrors ? 'active' : ''}`}>
-          <input
-            type="checkbox"
-            checked={filters.onlyErrors}
-            onChange={() => toggle('onlyErrors')}
-          />
+          <input type="checkbox" checked={filters.onlyErrors} onChange={() => toggle('onlyErrors')} />
           Errors
         </label>
 
         <label className={`threshold-wrap ${filters.onlySlow ? 'active' : ''}`}>
-          <input
-            type="checkbox"
-            checked={filters.onlySlow}
-            onChange={() => toggle('onlySlow')}
-          />
+          <input type="checkbox" checked={filters.onlySlow} onChange={() => toggle('onlySlow')} />
           Slow
           <input
             className="threshold"
@@ -122,23 +116,15 @@ export function Filters({
         </select>
 
         <label className={`chip ${filters.groupByDomain ? 'active' : ''}`}>
-          <input
-            type="checkbox"
-            checked={filters.groupByDomain}
-            onChange={() => toggle('groupByDomain')}
-          />
-          By domain
+          <input type="checkbox" checked={filters.groupByDomain} onChange={() => toggle('groupByDomain')} />
+          Domain
         </label>
 
         <label className={`chip ${filters.preserveLog ? 'active' : ''}`}>
-          <input
-            type="checkbox"
-            checked={filters.preserveLog}
-            onChange={() => toggle('preserveLog')}
-          />
-          Keep history
+          <input type="checkbox" checked={filters.preserveLog} onChange={() => toggle('preserveLog')} />
+          History
         </label>
       </div>
-    </header>
+    </div>
   )
 }
