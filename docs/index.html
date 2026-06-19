@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404-AM — Network &amp; Console DevTools</title>
+    <meta
+      name="description"
+      content="A Chrome DevTools panel to inspect, filter and debug a page's fetch/XHR requests and console logs — with a one-click Copy for AI."
+    />
+    <style>
+      :root {
+        --bg: #0f0f14;
+        --surface: #1b1b22;
+        --border: rgba(255, 255, 255, 0.08);
+        --fg: #e8e8ed;
+        --muted: #9898a8;
+        --accent: #6a66ff;
+        --accent2: #9b59ff;
+        --green: #53c087;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: #b8b5ff; }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+
+      header { text-align: center; padding: 80px 0 56px; }
+      .mark {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 20px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+        box-shadow: 0 0 40px rgba(106, 102, 255, 0.45);
+      }
+      h1 { font-size: 44px; margin: 0 0 8px; letter-spacing: -0.03em; }
+      .tag { color: var(--muted); font-size: 19px; margin: 0 auto 28px; max-width: 600px; }
+      .cta { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+      .btn {
+        display: inline-block;
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        font-size: 15px;
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-ghost { border: 1px solid var(--border); color: var(--fg); }
+
+      section { padding: 40px 0; }
+      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 20px; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+      .feat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .feat h3 { margin: 0 0 6px; font-size: 16px; }
+      .feat p { margin: 0; color: var(--muted); font-size: 14px; }
+
+      .ai {
+        background: linear-gradient(135deg, rgba(106, 102, 255, 0.12), rgba(155, 89, 255, 0.06));
+        border: 1px solid rgba(106, 102, 255, 0.25);
+        border-radius: 14px;
+        padding: 28px;
+      }
+      .ai h2 { color: #b8b5ff; }
+      pre {
+        background: #0a0a0e;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        overflow: auto;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 13px;
+        color: var(--green);
+      }
+      footer { text-align: center; color: var(--muted); font-size: 14px; padding: 48px 0 64px; border-top: 1px solid var(--border); margin-top: 40px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <div class="mark"></div>
+        <h1>404-AM</h1>
+        <p class="tag">
+          A focused Chrome DevTools panel to inspect, filter, and debug your
+          app's network requests and console logs — and explain failures to AI
+          in one click.
+        </p>
+        <div class="cta">
+          <!-- Replace with your Chrome Web Store URL once published. -->
+          <a class="btn btn-primary" href="#install">Add to Chrome</a>
+          <a class="btn btn-ghost" href="https://github.com/">View on GitHub</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="wrap">
+      <h2>What it does</h2>
+      <div class="grid">
+        <div class="feat"><h3>Live request capture</h3><p>Every fetch/XHR with method, status, duration, size and content-type — filter by errors, slow, type, or search URLs and bodies.</p></div>
+        <div class="feat"><h3>Rich detail</h3><p>Headers (important ones highlighted, secrets masked), payloads, and response bodies with JSON syntax highlighting.</p></div>
+        <div class="feat"><h3>Interactive JSON tree</h3><p>Click a key to copy its path (<code>data.items[0].id</code>), click a value to copy it.</p></div>
+        <div class="feat"><h3>Console, together</h3><p>An integrated console panel shows the page's logs right beside the requests.</p></div>
+        <div class="feat"><h3>Waterfall &amp; sort</h3><p>A mini timeline per request, plus sort by slowest/largest/status and group by domain.</p></div>
+        <div class="feat"><h3>Copy anything</h3><p>Copy as cURL, fetch, or raw response. Export the session to HAR or JSON.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="ai">
+        <h2>Copy for AI</h2>
+        <p>
+          Hit a failing request, click <strong>Copy for AI</strong>, and paste a
+          ready-made, secret-masked debug brief into your assistant — what
+          failed, where to look in your codebase, the full request/response
+          context, and recent console errors.
+        </p>
+        <pre># Failed network request — debug brief
+## What failed
+- `GET https://api.example.com/v1/users/42` → **500** — a 5xx server-side error
+## Where to look
+- Endpoint path: `/v1/users/42`
+- Correlate with backend logs using: `x-request-id=req-8f3a…`
+## Ask
+1. Most likely cause  2. Which file/function to inspect  3. A concrete fix</pre>
+      </div>
+    </section>
+
+    <section class="wrap" id="install">
+      <h2>Install</h2>
+      <div class="feat">
+        <p style="margin-bottom: 12px">From source:</p>
+        <pre>npm install
+npm run build
+# chrome://extensions → Developer mode → Load unpacked → select dist/
+# Open DevTools → "404-AM" tab</pre>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        404-AM collects no data — everything stays in your browser.
+        <a href="../PRIVACY.md">Privacy policy</a> · MIT licensed
+      </div>
+    </footer>
+  </body>
+</html>
