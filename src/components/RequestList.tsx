@@ -63,9 +63,10 @@ export function RequestList({
 
   useEffect(() => {
     if (latestRequestId !== null && latestRequestId !== previousLatestRequestIdRef.current) {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       listRef.current
         ?.querySelector<HTMLElement>(`[data-request-id="${latestRequestId}"]`)
-        ?.scrollIntoView({ block: 'end' })
+        ?.scrollIntoView({ block: 'end', behavior: prefersReducedMotion ? 'auto' : 'smooth' })
     }
     previousLatestRequestIdRef.current = latestRequestId
   }, [latestRequestId])
