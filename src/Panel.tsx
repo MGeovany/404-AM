@@ -5,10 +5,12 @@ import { useBodyIndex } from './hooks/useBodyIndex'
 import { useHiddenConsoleMessages } from './hooks/useHiddenConsoleMessages'
 import { RequestList } from './components/RequestList'
 import { RequestDetail } from './components/RequestDetail'
+import { SiteDataPanel } from './components/SiteDataPanel'
 import { ConsolePanel } from './components/ConsolePanel'
 import { Filters, type FilterState } from './components/Filters'
 import { downloadFile, toHar, toJson } from './lib/export'
 import { categoryOf } from './lib/contentType'
+import { ignoreExtensionContextInvalidated } from './lib/chrome'
 
 const API_TYPES = ['xhr', 'fetch']
 const LAYOUT_KEY = 'fourohfour_layout_v1'
@@ -21,6 +23,7 @@ const DEFAULT_FILTERS: FilterState = {
   onlyErrors: false,
   onlySlow: false,
   slowThresholdMs: 1000,
+  hideAssets: false,
   groupByDomain: false,
   contentType: 'all',
   preserveLog: true,
@@ -40,6 +43,7 @@ export function Panel() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [consoleCollapsed, setConsoleCollapsed] = useState(false)
+  const [workspaceMode, setWorkspaceMode] = useState<'request' | 'site-data'>('request')
 
   const { requests, navigations, clear } = useRequestSource(filters.preserveLog)
   const { logs, clear: clearLogs } = useConsoleSource(filters.preserveLog)
@@ -52,16 +56,22 @@ export function Panel() {
 
   // Load persisted sidebar width.
   useEffect(() => {
-    chrome.storage?.local?.get(LAYOUT_KEY, (res) => {
-      const w = res?.[LAYOUT_KEY]?.sidebarWidth
-      if (typeof w === 'number') setSidebarWidth(Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, w)))
-    })
+    try {
+      if (typeof chrome === 'undefined') return
+      chrome.storage?.local?.get(LAYOUT_KEY, (res) => {
+        const w = res?.[LAYOUT_KEY]?.sidebarWidth
+        if (typeof w === 'number') setSidebarWidth(Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, w)))
+      })
+    } catch (error) {
+      ignoreExtensionContextInvalidated(error)
+    }
   }, [])
 
   const apiRequests = useMemo(
     () => requests.filter((r) => API_TYPES.includes(r.resourceType)),
     [requests],
   )
+  const latestRequestId = apiRequests.length > 0 ? apiRequests[apiRequests.length - 1].id : null
 
   // Fetch bodies lazily only while body-search is active and there's a query.
   const bodySearchActive = filters.searchBodies && filters.search.trim().length > 0
@@ -73,8 +83,9 @@ export function Panel() {
       if (filters.onlyErrors && r.status < 400) return false
       if (filters.onlySlow && r.durationMs < filters.slowThresholdMs) return false
       if (filters.starredOnly && !favorites.has(r.id)) return false
-      if (filters.contentType !== 'all' && categoryOf(r.responseMimeType) !== filters.contentType)
-        return false
+      const contentCategory = categoryOf(r.responseMimeType)
+      if (filters.hideAssets && ['css', 'image', 'js'].includes(contentCategory)) return false
+      if (filters.contentType !== 'all' && contentCategory !== filters.contentType) return false
       if (search) {
         const urlMatch = r.url.toLowerCase().includes(search)
         const bodyMatch = filters.searchBodies && (bodies.get(r.id)?.includes(search) ?? false)
@@ -162,7 +173,11 @@ export function Panel() {
       document.body.style.cursor = ''
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
-      chrome.storage?.local?.set({ [LAYOUT_KEY]: { sidebarWidth: w } })
+      try {
+        if (typeof chrome !== 'undefined') chrome.storage?.local?.set({ [LAYOUT_KEY]: { sidebarWidth: w } })
+      } catch (error) {
+        ignoreExtensionContextInvalidated(error)
+      }
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
@@ -209,6 +224,7 @@ export function Panel() {
               requests={sorted}
               navigations={showMarkers ? navigations : []}
               selectedId={selectedId}
+              latestRequestId={latestRequestId}
               onSelect={setSelectedId}
               groupByDomain={filters.groupByDomain}
               slowThresholdMs={filters.slowThresholdMs}
@@ -219,11 +235,29 @@ export function Panel() {
         </aside>
         <div className="resizer" onMouseDown={startResize} title="Drag to resize" />
         <main className="workspace">
+          <div className="workspace-mode-bar">
+            <button
+              className={`workspace-mode ${workspaceMode === 'request' ? 'active' : ''}`}
+              onClick={() => setWorkspaceMode('request')}
+            >
+              Request
+            </button>
+            <button
+              className={`workspace-mode ${workspaceMode === 'site-data' ? 'active' : ''}`}
+              onClick={() => setWorkspaceMode('site-data')}
+            >
+              Site data
+            </button>
+          </div>
+          {workspaceMode === 'site-data' ? (
+            <SiteDataPanel />
+          ) : (
             <RequestDetail
               req={selected}
               initialBodyQuery={bodySearchActive ? filters.search : ''}
               consoleLogs={visibleLogs}
             />
+          )}
         </main>
       </div>
       <ConsolePanel

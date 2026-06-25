@@ -1,4 +1,5 @@
 import { CATEGORY_LABEL, CONTENT_CATEGORIES } from '../lib/contentType'
+import { ignoreExtensionContextInvalidated } from '../lib/chrome'
 
 export type SortMode = 'recent' | 'duration' | 'size' | 'status'
 
@@ -7,6 +8,7 @@ export interface FilterState {
   onlyErrors: boolean
   onlySlow: boolean
   slowThresholdMs: number
+  hideAssets: boolean
   groupByDomain: boolean
   contentType: string
   preserveLog: boolean
@@ -23,9 +25,14 @@ const SORT_LABEL: Record<SortMode, string> = {
 }
 
 function extensionIconUrl() {
-  return typeof chrome !== 'undefined' && chrome.runtime?.getURL
-    ? chrome.runtime.getURL('icons/icon32.png')
-    : 'icons/icon32.png'
+  try {
+    return typeof chrome !== 'undefined' && chrome.runtime?.getURL
+      ? chrome.runtime.getURL('icons/icon32.png')
+      : 'icons/icon32.png'
+  } catch (error) {
+    ignoreExtensionContextInvalidated(error)
+    return 'icons/icon32.png'
+  }
 }
 
 interface Props {
@@ -119,6 +126,14 @@ export function Filters({
         <label className={`chip ${filters.starredOnly ? 'active' : ''}`}>
           <input type="checkbox" checked={filters.starredOnly} onChange={() => toggle('starredOnly')} />
           ★ Starred
+        </label>
+
+        <label
+          className={`chip ${filters.hideAssets ? 'active' : ''}`}
+          title="Hide CSS, image, and JavaScript requests"
+        >
+          <input type="checkbox" checked={filters.hideAssets} onChange={() => toggle('hideAssets')} />
+          No assets
         </label>
 
         <label className={`threshold-wrap ${filters.onlySlow ? 'active' : ''}`}>
