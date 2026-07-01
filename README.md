@@ -1,110 +1,64 @@
 # Nocturne
 
-Chrome DevTools panel to inspect `fetch` and XHR requests: status, duration, headers, payload and response body. Sensitive values are masked by default. Copy as cURL or fetch.
+Nocturne exists for the moment when something breaks and the browser gives you ten different places to look.
 
-The same React UI also builds as a Safari Web Extension overlay. The UI imports a host-agnostic `@source` module; the regular build points it at the DevTools API source, while the Safari build points it at the injected content-script source.
+Console says one thing. Network says another. A request failed, but the reason is buried in headers, payloads, response bodies, timing, cookies, and scattered logs. By the time you ask an AI assistant for help, half the context is missing and the other half is copied by hand.
 
-## Develop
+Nocturne is built to make that moment calmer.
 
-```bash
-pnpm install
-pnpm build
-pnpm watch
-```
+It brings the story of a bug into one focused place, so you can understand what happened, share it clearly, and move faster without jumping between tabs.
 
-## Load in Chrome
+## Why It Exists
 
-1. Run `pnpm build` (creates `dist/`).
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the `dist/` folder.
-5. Open DevTools on any page → **Nocturne** tab.
+Modern debugging is not just about seeing an error. It is about understanding the chain of events around it.
 
-After changing code, run `pnpm build` or keep `pnpm watch` running, then close and reopen DevTools.
+A failed request is rarely just a failed request. It usually connects to a user action, a console warning, a payload shape, a missing token, a slow endpoint, or a response that looked fine until you inspected the body.
 
-## Load in Safari
+Nocturne exists because developers should not have to reconstruct that story manually every time.
 
-```bash
-npm run build:safari
-open safari-app/nocturne/nocturne.xcodeproj
-```
+## What It Helps With
 
-The Safari Xcode project references `dist-safari/` directly, so rebuild with `npm run build:safari` after changing shared UI, source hooks, or the injected capture script.
+Nocturne helps you answer the questions that show up when an app misbehaves:
 
-For a zip of the Safari web-extension resources:
+- What request failed?
+- What did the app send?
+- What came back?
+- Was it slow, broken, empty, or unexpected?
+- What did the console say around the same time?
+- What context should I give to an AI assistant or teammate?
 
-```bash
-npm run package:safari   # writes nocturne-safari-v<version>.zip
-```
+The goal is not more noise. The goal is better context.
 
-## Architecture
+## Built For Late Debugging Sessions
 
-- Chrome/Firefox: `public/manifest.json` → `devtools_page: devtools.html` → `panel.html`.
-- Safari: `manifest.safari.json` → `content.js` overlay + `inject.js` main-world capture.
-- Shared UI: `src/Panel.tsx`, `src/components/`, `src/lib/`.
-- Data-source swap: `@source` resolves to `src/data/devtoolsSource.ts` in `vite.config.ts` and `src/data/injectedSource.ts` in `vite.safari.config.ts`.
+Nocturne is named for the work that happens after the obvious fixes are gone.
 
-No background service worker is needed.
+The quiet hour. The hard bug. The weird API response. The issue that only makes sense when network, console, and timing are viewed together.
 
-## Publish to the Chrome Web Store
+It is for developers, QA engineers, support teams, and anyone who has ever stared at DevTools thinking, “I know the answer is in here somewhere.”
 
-```bash
-npm run package   # builds dist/ and writes nocturne-v<version>.zip
-```
+## Copy For AI
 
-1. Bump `version` in **both** `package.json` and `public/manifest.json`.
-2. Run `npm run package` to produce `nocturne-v<version>.zip` (manifest at the zip root).
-3. Open the [Developer Console](https://chrome.google.com/webstore/devconsole) and upload the zip.
-4. Fill in the listing using [`STORE_LISTING.md`](./STORE_LISTING.md) (name, descriptions, permission justifications, privacy answers).
-5. Host [`PRIVACY.md`](./PRIVACY.md) publicly and paste its URL into the privacy policy field.
-6. Add 1–5 screenshots (1280×800 or 640×400) — see the asset checklist in `STORE_LISTING.md`.
-7. Submit for review.
+AI is only useful when it has the right context.
 
-Publishing files in this repo: [`STORE_LISTING.md`](./STORE_LISTING.md), [`PRIVACY.md`](./PRIVACY.md), [`LICENSE`](./LICENSE), [`scripts/package.mjs`](./scripts/package.mjs), [`CHANGELOG.md`](./CHANGELOG.md).
+Nocturne is designed around that idea. Instead of asking you to manually collect the important pieces, it helps turn a broken request into a clear debugging brief that can be shared with an assistant or teammate.
 
-## Publish to Microsoft Edge Add-ons
+The point is simple: less explaining, better answers.
 
-```bash
-npm run package:edge   # builds dist/ and writes nocturne-edge-v<version>.zip
-```
+## Privacy
 
-1. Bump `version` in **both** `package.json` and `public/manifest.json`.
-2. Run `npm run package:edge` to produce `nocturne-edge-v<version>.zip`.
-3. Upload the zip at <https://partner.microsoft.com/dashboard/microsoftedge/>.
-4. **Listing:** [Nocturne on Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/nocturne/moeapnkcablnlgiofkblcjppinifdood).
+Nocturne is a local developer tool.
 
-## Publish to Firefox (addons.mozilla.org)
+It is not built around accounts, analytics, tracking, or remote servers. The debugging context you inspect stays with you unless you choose to copy or export it.
 
-The same code runs on Firefox (it uses the `chrome.*` namespace, which Firefox
-supports). Only the manifest differs — see [`manifest.firefox.json`](./manifest.firefox.json)
-(adds `browser_specific_settings.gecko`, drops Chrome-only keys).
+## The Promise
 
-```bash
-npm run package:firefox   # writes nocturne-firefox-v<version>.zip
-```
+Nocturne should feel like a quieter, sharper debugging workspace.
 
-1. Edit the Gecko `id` in `manifest.firefox.json` (e.g. `nocturne@yourdomain`).
-2. Run `npm run package:firefox`.
-3. Submit the zip at <https://addons.mozilla.org/developers/addon/submit/>.
-4. **Listing:** [Nocturne on Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/d99a19ad970049ecb787/) (developer id `d99a19ad970049ecb787`).
-5. **Source code:** because the upload is bundled/minified, AMO review requires
-   the source. Run `npm run package:source` to produce
-   `nocturne-source-v<version>.zip`, and see [`BUILD.md`](./BUILD.md) for the
-   reproducible build instructions reviewers need (OS/env, Node/npm versions,
-   steps).
+Less tab hopping.
+Less copy-paste chaos.
+Less guessing.
 
-> The Firefox packager overwrites `dist/manifest.json`. Run `npm run build`
-> (or `npm run package`) again before loading the Chrome build.
-
-### Automation
-
-- **CI** (`.github/workflows/ci.yml`) runs typecheck + build on every push/PR.
-- **Release** (`.github/workflows/release.yml`) builds and attaches
-  `nocturne-v<version>.zip` to a GitHub Release whenever you push a `v*` tag:
-  ```bash
-  git tag v0.1.0 && git push origin v0.1.0
-  ```
-- **Landing page** (`docs/index.html`) — enable GitHub Pages from the `/docs`
-  folder to publish it.
-- **Screenshots** — see [`screenshots/`](./screenshots/) for a demo target page
-  and a capture guide.
+More context.
+More clarity.
+Faster fixes.
