@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nocturne",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DevTools panel to inspect fetch and XHR requests on any page.",
   "minimum_chrome_version": "100",
   "devtools_page": "devtools.html",

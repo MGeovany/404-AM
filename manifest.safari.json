@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nocturne",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Inspect, filter and debug a page's fetch/XHR requests and console logs.",
   "permissions": ["storage"],
   "host_permissions": ["http://*/*", "https://*/*"],
